@@ -3,7 +3,7 @@
 A small ring and percentage in the prompt footer, right after the mode label (Auto), showing how full the current
 session's context window is. Neutral under 60%, amber from 60 to 85%, red above 85%.
 
-- Hover: used tokens / window size, shown inline.
+- At rest: a glyph ring (○ ◔ ◑ ◕ ●) and the percentage.
 - Click: a toast with used / max and the System, Tools and Messages buckets (the same breakdown /context uses,
   estimated locally, no extra API calls).
 - `/context-indicator`: reports whether the mod loaded and which surfaces drew it.
@@ -26,7 +26,7 @@ The repository is private: you need GitHub access to it on the machine you insta
 
 1. Start a new session. A ring with `0%` appears after the mode label (Auto) in the prompt footer.
 2. Send a prompt. After the reply, the percentage matches `/context`.
-3. Hover for used / max tokens; click for a toast with the System, Tools and Messages breakdown.
+3. Click the percentage for a toast with used / max, free space and the System, Tools and Messages breakdown.
 
 ## Limits
 

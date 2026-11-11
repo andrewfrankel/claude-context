@@ -43,10 +43,11 @@ const summaryOf = (snap: Snapshot): string =>
 
 const detailOf = (snap: Snapshot): string => {
   const b = snap.buckets
+  const free = Math.max(0, snap.window - snap.tokens)
   const buckets = b === null
     ? ''
     : ` · System ${fmt(b.system)} · Tools ${fmt(b.tools)} · Messages ${fmt(b.messages)}`
-  return `${summaryOf(snap)}${buckets}`
+  return `${summaryOf(snap)} (${fmt(free)} free)${buckets}`
 }
 
 async function refresh($: EngineInterface): Promise<void> {
@@ -101,10 +102,10 @@ export const register: Register = on => {
     const snap = await read($, snapshot)
     if (snap === null || snap.window <= 0) return base
 
-    // The desktop draws this slot as one line: no Svg and no floating boxes,
-    // though a hover reveal works in the flow. So: a glyph ring and the
-    // percentage as one Button (its label names the detail), a short token
-    // count revealed inline on hover, and the full breakdown in a toast on click.
+    // The desktop draws this slot as one line of text: no Svg, and a Button
+    // shows its `label` when it has one. So the resting view is only a glyph
+    // ring and the percentage (no label, so the children show), and the detail
+    // goes in a toast on click.
     const { Box, Text, Button } = $.ui.resolve(e)
     const level = levelOf(snap.percent)
     const color = level === 'red' ? 'error' : level === 'amber' ? 'warning' : undefined
@@ -112,16 +113,11 @@ export const register: Register = on => {
     return (
       <Box flexDirection="row" alignItems="center" columnGap={1}>
         {base}
-        <Box key="ctx-hover" flexDirection="row" alignItems="center" columnGap={1}>
-          <Button key="ctx-indicator" plain label={summaryOf(snap)} onPress={() => { $.ui.toast(detailOf(snap)) }}>
-            <Text color={color} dimColor={color === undefined} tabular>
-              {glyph(snap.percent)} {snap.percent}%
-            </Text>
-          </Button>
-          <Box display="none" hover={{ display: 'flex' }}>
-            <Text dimColor tabular wrap="truncate">{fmt(snap.tokens)} / {fmt(snap.window)}</Text>
-          </Box>
-        </Box>
+        <Button key="ctx-indicator" plain onPress={() => { $.ui.toast(detailOf(snap)) }}>
+          <Text color={color} dimColor={color === undefined} tabular>
+            {glyph(snap.percent)} {snap.percent}%
+          </Text>
+        </Button>
       </Box>
     )
   })

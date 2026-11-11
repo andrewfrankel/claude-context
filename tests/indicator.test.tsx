@@ -61,14 +61,13 @@ test('shows ring and percentage, keeps the mode label, toasts the breakdown', as
     const ui = await $.ui.mount({ ...MODE, surface })
     expect(await ui.find({ type: 'Text', text: 'Auto' })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: '◑ 42%' })).toBeDefined()
-    expect(await ui.find({ type: 'Text', text: '84.0k / 200k' })).toBeDefined()
     await ui.unmount()
   }
 
   const ui = await $.ui.mount({ ...MODE, surface: 'desktop' })
   await ui.press({ key: 'ctx-indicator' })
   expect(toasts.at(-1)).toBe(
-    'Context window: 42%, 84.0k of 200k tokens · System 3.0k · Tools 14.0k · Messages 67.0k',
+    'Context window: 42%, 84.0k of 200k tokens (116k free) · System 3.0k · Tools 14.0k · Messages 67.0k',
   )
 
   tokens = 180_000
