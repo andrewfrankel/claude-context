@@ -1,0 +1,6 @@
+{
+  "name": "context-usage-indicator",
+  "version": "0.1.0",
+  "description": "Context usage indicator: a small ring and percentage for the current session's context window, next to the mode label in the prompt footer",
+  "types": "./types/index.d.ts"
+}

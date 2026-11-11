@@ -1,0 +1,5 @@
+{
+  "name": "claude-context",
+  "owner": { "name": "andrewfrankel" },
+  "plugins": [{ "name": "context-usage-indicator", "source": "./" }]
+}
