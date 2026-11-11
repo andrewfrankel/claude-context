@@ -76,50 +76,22 @@ test('shows ring and percentage, keeps the mode label, toasts the breakdown', as
   await ui.unmount()
 })
 
-test('/context-indicator reports where the footer slot drew', async ($, on) => {
+test('/context-indicator prints the figures, the breakdown and where it draws', async ($, on) => {
   on('session.usage', () => usageAt(84_000))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('session.surfaces', () => ({ value: ['terminal'] as const }))
+  on('session.surfaces', () => ({ value: [] }))
   on('command.register', () => ({ value: { command: 'context-indicator' } }))
-
-  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
-  const ui = await $.ui.mount({ ...MODE, surface: 'terminal' })
-  await ui.unmount()
-
-  const out = await $.command.run({ command: 'context-indicator', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
-  expect(out.text).toContain('42%')
-  expect(out.text).toContain('Footer slot drawn on: terminal.')
-})
-
-const TURN = {
-  answer: 'ok',
-  durationMs: 1000,
-  isAborted: false,
-  turnId: 't1',
-  reason: 'answer',
-  category: null,
-  explanation: null,
-} as const
-
-test('with no surface attached, each turn ends with a context notice', async ($, on) => {
-  const appended: string[] = []
-  let surfaces: readonly ('desktop')[] = []
-  on('session.usage', () => usageAt(130_000))
-  on('session.start', (_, e) => ({ cwd: e.cwd }))
-  on('command.register', () => ({ value: { command: 'context-indicator' } }))
-  on('session.surfaces', () => ({ value: surfaces }))
-  on('turn.complete', () => ({ text: 'ok' }))
-  on('session.append', (_, e, next) => {
-    const block = e.message.content[0]
-    if (block?.type === 'text') appended.push(String(block.text))
-    return next(e)
-  })
 
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
-  await $.turn.complete(TURN)
-  expect(appended).toEqual(['◕ Context 65% · 130k of 200k · getting full'])
-
-  surfaces = ['desktop']
-  await $.turn.complete(TURN)
-  expect(appended.length).toBe(1)
+  const out = await $.command.run({
+    command: 'context-indicator',
+    args: '',
+    origin: { kind: 'composer' },
+    presentation: { isFullscreen: false, columns: 80 },
+  })
+  expect(out.text).toBe([
+    '◑ Context window: 42% · 84.0k of 200k tokens (116k free)',
+    'System 3.0k · Tools 14.0k · Messages 67.0k',
+    'Surfaces: none · footer drawn on: none',
+  ].join('\n'))
 })

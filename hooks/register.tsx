@@ -50,12 +50,6 @@ const detailOf = (snap: Snapshot): string => {
   return `${summaryOf(snap)} (${fmt(free)} free)${buckets}`
 }
 
-const noticeOf = (snap: Snapshot): string => {
-  const level = levelOf(snap.percent)
-  const flag = level === 'red' ? ' · consider /compact' : level === 'amber' ? ' · getting full' : ''
-  return `${glyph(snap.percent)} Context ${snap.percent}% · ${fmt(snap.tokens)} of ${fmt(snap.window)}${flag}`
-}
-
 async function refresh($: EngineInterface): Promise<void> {
   // `summary` estimates locally: no extra API calls.
   const usage = await $.session.usage({ breakdown: 'summary' })
@@ -72,42 +66,32 @@ export const register: Register = on => {
     const result = await next(e)
     await $.command.register({
       name: 'context-indicator',
-      description: 'Report whether the context usage indicator is loaded and where it draws',
+      description: 'Show this session\'s context window usage, with the System, Tools and Messages breakdown',
     })
     await refresh($)
     return result
   })
 
+  // The on-demand view, and the only one cloud sessions in the desktop app
+  // show: they attach no drawing surface, and command output is streamed.
   on('command.run', { command: 'context-indicator' }, async $ => {
-    const surfaces = await $.session.surfaces()
+    await refresh($)
     const snap = await read($, snapshot)
-    const figures = snap === null
-      ? 'no figures yet'
-      : `${snap.percent}% (${fmt(snap.tokens)} of ${fmt(snap.window)} tokens)`
-    const drawn = drawnOn.size === 0 ? 'none yet' : [...drawnOn].join(', ')
+    const surfaces = await $.session.surfaces()
+    const drawn = drawnOn.size === 0 ? 'none' : [...drawnOn].join(', ')
+    const where = `Surfaces: ${surfaces.length === 0 ? 'none' : surfaces.join(', ')} · footer drawn on: ${drawn}`
+    if (snap === null || snap.tokens <= 0) {
+      return { text: ['Context window: no figures yet (they arrive with the first reply).', where].join('\n') }
+    }
+    const b = snap.buckets
+    const free = Math.max(0, snap.window - snap.tokens)
     return {
       text: [
-        'Context usage indicator is loaded.',
-        `Context: ${figures}.`,
-        `Session surfaces: ${surfaces.length === 0 ? 'none' : surfaces.join(', ')}.`,
-        `Footer slot drawn on: ${drawn}.`,
+        `${glyph(snap.percent)} Context window: ${snap.percent}% · ${fmt(snap.tokens)} of ${fmt(snap.window)} tokens (${fmt(free)} free)`,
+        b === null ? 'Breakdown not available' : `System ${fmt(b.system)} · Tools ${fmt(b.tools)} · Messages ${fmt(b.messages)}`,
+        where,
       ].join('\n'),
     }
-  })
-
-  // Where no surface draws the mod (a cloud session in the desktop app), the
-  // footer chip cannot show, so each turn ends with a one-line notice instead.
-  // A system row: in the transcript, never read by the model.
-  on('turn.complete', async ($, e, next) => {
-    const result = await next(e)
-    if ((await $.session.surfaces()).length > 0) return result
-    await refresh($)
-    const snap = await read($, snapshot)
-    if (snap === null || snap.tokens <= 0) return result
-    await $.session.append({
-      message: { type: 'system', content: [{ type: 'text', text: noticeOf(snap) }] },
-    })
-    return result
   })
 
   // Raised when the context fill moves, i.e. after each model response.
