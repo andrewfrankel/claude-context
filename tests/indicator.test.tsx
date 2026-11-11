@@ -42,6 +42,7 @@ const usageAt = (tokens: number) => ({
 test('shows the percentage, keeps the mode label, and opens the breakdown', async ($, on) => {
   let tokens = 84_000
   on('session.usage', () => usageAt(tokens))
+  on('command.register', () => ({ value: { command: 'context-indicator' } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('session.measure', (_, e) => ({ changed: e.changed }))
   on('ui.render', ($, e) => {
@@ -68,4 +69,19 @@ test('shows the percentage, keeps the mode label, and opens the breakdown', asyn
   await $.session.measure({ context: { tokens, window: 200_000, percent: 90 }, rateLimits: [], changed: ['context'] })
   expect((await ui.find({ type: 'Text', text: '90%' }))).toBeDefined()
   await ui.unmount()
+})
+
+test('/context-indicator reports where the footer slot drew', async ($, on) => {
+  on('session.usage', () => usageAt(84_000))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.surfaces', () => ({ value: ['terminal'] as const }))
+  on('command.register', () => ({ value: { command: 'context-indicator' } }))
+
+  await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+  const ui = await $.ui.mount({ ...MODE, surface: 'terminal' })
+  await ui.unmount()
+
+  const out = await $.command.run({ command: 'context-indicator', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
+  expect(out.text).toContain('42%')
+  expect(out.text).toContain('Footer slot drawn on: terminal.')
 })

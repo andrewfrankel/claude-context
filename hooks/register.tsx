@@ -64,11 +64,35 @@ async function refresh($: EngineInterface): Promise<void> {
 }
 
 export const register: Register = on => {
+  // Which surfaces have asked the footer slot to draw since the mod loaded:
+  // the diagnostic for "loaded but not visible".
+  const drawnOn = new Set<string>()
 
   on('session.start', async ($, e, next) => {
     const result = await next(e)
+    await $.command.register({
+      name: 'context-indicator',
+      description: 'Report whether the context usage indicator is loaded and where it draws',
+    })
     await refresh($)
     return result
+  })
+
+  on('command.run', { command: 'context-indicator' }, async $ => {
+    const surfaces = await $.session.surfaces()
+    const snap = await read($, snapshot)
+    const figures = snap === null
+      ? 'no figures yet'
+      : `${snap.percent}% (${fmt(snap.tokens)} of ${fmt(snap.window)} tokens)`
+    const drawn = drawnOn.size === 0 ? 'none yet' : [...drawnOn].join(', ')
+    return {
+      text: [
+        'Context usage indicator is loaded.',
+        `Context: ${figures}.`,
+        `Session surfaces: ${surfaces.length === 0 ? 'none' : surfaces.join(', ')}.`,
+        `Footer slot drawn on: ${drawn}.`,
+      ].join('\n'),
+    }
   })
 
   // Raised when the context fill moves, i.e. after each model response.
@@ -79,6 +103,7 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'SessionMode' }, async ($, e, next) => {
+    drawnOn.add(e.surface)
     const base = await next(e)
     const snap = await read($, snapshot)
     if (snap === null || snap.window <= 0) return base
