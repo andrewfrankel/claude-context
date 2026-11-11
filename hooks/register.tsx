@@ -50,6 +50,12 @@ const detailOf = (snap: Snapshot): string => {
   return `${summaryOf(snap)} (${fmt(free)} free)${buckets}`
 }
 
+const noticeOf = (snap: Snapshot): string => {
+  const level = levelOf(snap.percent)
+  const flag = level === 'red' ? ' · consider /compact' : level === 'amber' ? ' · getting full' : ''
+  return `${glyph(snap.percent)} Context ${snap.percent}% · ${fmt(snap.tokens)} of ${fmt(snap.window)}${flag}`
+}
+
 async function refresh($: EngineInterface): Promise<void> {
   // `summary` estimates locally: no extra API calls.
   const usage = await $.session.usage({ breakdown: 'summary' })
@@ -87,6 +93,21 @@ export const register: Register = on => {
         `Footer slot drawn on: ${drawn}.`,
       ].join('\n'),
     }
+  })
+
+  // Where no surface draws the mod (a cloud session in the desktop app), the
+  // footer chip cannot show, so each turn ends with a one-line notice instead.
+  // A system row: in the transcript, never read by the model.
+  on('turn.complete', async ($, e, next) => {
+    const result = await next(e)
+    if ((await $.session.surfaces()).length > 0) return result
+    await refresh($)
+    const snap = await read($, snapshot)
+    if (snap === null || snap.tokens <= 0) return result
+    await $.session.append({
+      message: { type: 'system', content: [{ type: 'text', text: noticeOf(snap) }] },
+    })
+    return result
   })
 
   // Raised when the context fill moves, i.e. after each model response.

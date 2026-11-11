@@ -90,3 +90,36 @@ test('/context-indicator reports where the footer slot drew', async ($, on) => {
   expect(out.text).toContain('42%')
   expect(out.text).toContain('Footer slot drawn on: terminal.')
 })
+
+const TURN = {
+  answer: 'ok',
+  durationMs: 1000,
+  isAborted: false,
+  turnId: 't1',
+  reason: 'answer',
+  category: null,
+  explanation: null,
+} as const
+
+test('with no surface attached, each turn ends with a context notice', async ($, on) => {
+  const appended: string[] = []
+  let surfaces: readonly ('desktop')[] = []
+  on('session.usage', () => usageAt(130_000))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('command.register', () => ({ value: { command: 'context-indicator' } }))
+  on('session.surfaces', () => ({ value: surfaces }))
+  on('turn.complete', () => ({ text: 'ok' }))
+  on('session.append', (_, e, next) => {
+    const block = e.message.content[0]
+    if (block?.type === 'text') appended.push(String(block.text))
+    return next(e)
+  })
+
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.turn.complete(TURN)
+  expect(appended).toEqual(['◕ Context 65% · 130k of 200k · getting full'])
+
+  surfaces = ['desktop']
+  await $.turn.complete(TURN)
+  expect(appended.length).toBe(1)
+})

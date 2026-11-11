@@ -6,6 +6,8 @@ session's context window is. Neutral under 60%, amber from 60 to 85%, red above 
 - At rest: a glyph ring (○ ◔ ◑ ◕ ●) and the percentage.
 - Click: a toast with used / max and the System, Tools and Messages buckets (the same breakdown /context uses,
   estimated locally, no extra API calls).
+- Cloud sessions in the desktop app attach no drawing surface, so the footer chip cannot show there. Instead each turn
+  ends with a one-line notice (`◔ Context 24% · 240k of 1M`), which the model never reads.
 - `/context-indicator`: reports whether the mod loaded and which surfaces drew it.
 
 The percentage is the status line's figure: the last response's input tokens over the model's window. It refreshes
@@ -34,4 +36,9 @@ The repository is private: you need GitHub access to it on the machine you insta
 - The percentage updates after each model response, not mid-stream; it starts at 0% until the first reply.
 - The bucket figures are local estimates against the compaction window, so they need not sum to "Used".
 - The ring is a text glyph (○ ◔ ◑ ◕ ●): the desktop footer slot does not draw SVG.
-- Cloud sessions do not read your local plugins; install it inside the cloud environment (setup script) as well.
+- Cloud sessions do not read your local plugins. Install it in each cloud environment's setup script:
+
+```
+claude plugin marketplace add andrewfrankel/claude-context || true
+claude plugin install context-usage-indicator@claude-context || true
+```
