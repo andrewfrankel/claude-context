@@ -39,12 +39,17 @@ const usageAt = (tokens: number) => ({
   },
 })
 
-test('shows the percentage, keeps the mode label, and opens the breakdown', async ($, on) => {
+test('shows ring and percentage, keeps the mode label, toasts the breakdown', async ($, on) => {
   let tokens = 84_000
+  const toasts: string[] = []
   on('session.usage', () => usageAt(tokens))
   on('command.register', () => ({ value: { command: 'context-indicator' } }))
   on('session.start', (_, e) => ({ cwd: e.cwd }))
   on('session.measure', (_, e) => ({ changed: e.changed }))
+  on('ui.toast', (_, e) => {
+    toasts.push(String(e.text))
+    return { value: undefined }
+  })
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
     return <Text>Auto</Text>
@@ -54,20 +59,21 @@ test('shows the percentage, keeps the mode label, and opens the breakdown', asyn
 
   for (const surface of ['terminal', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...MODE, surface })
-    expect((await ui.find({ type: 'Text', text: 'Auto' }))).toBeDefined()
-    expect((await ui.find({ type: 'Text', text: '42%' }))).toBeDefined()
-    expect((await ui.find({ type: 'Text', text: /84\.0k of 200k tokens/ }))).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: 'Auto' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: '◑ 42%' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: '84.0k / 200k' })).toBeDefined()
     await ui.unmount()
   }
 
   const ui = await $.ui.mount({ ...MODE, surface: 'desktop' })
-  await ui.press({ key: 'ctx-toggle' })
-  expect((await ui.find({ type: 'Text', text: '14.0k' }))).toBeDefined()
-  expect((await ui.find({ type: 'Text', text: '67.0k' }))).toBeDefined()
+  await ui.press({ key: 'ctx-indicator' })
+  expect(toasts.at(-1)).toBe(
+    'Context window: 42%, 84.0k of 200k tokens · System 3.0k · Tools 14.0k · Messages 67.0k',
+  )
 
   tokens = 180_000
   await $.session.measure({ context: { tokens, window: 200_000, percent: 90 }, rateLimits: [], changed: ['context'] })
-  expect((await ui.find({ type: 'Text', text: '90%' }))).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: '● 90%' })).toBeDefined()
   await ui.unmount()
 })
 

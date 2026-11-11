@@ -9,6 +9,6 @@ export type Snapshot = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'context-usage-indicator': { snapshot: Shaped<Snapshot | null>; isOpen: boolean }
+    'context-usage-indicator': { snapshot: Shaped<Snapshot | null> }
   }
 }
